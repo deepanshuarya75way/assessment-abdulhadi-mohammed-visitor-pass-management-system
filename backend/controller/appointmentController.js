@@ -84,7 +84,7 @@ exports.getVisitorAppointments = async(req, res)=>{
             return res.status(404).json({error: "No visitor found"})
         }
 
-        const appoitments = await appointmentModel.find({visitorId: visitor._id})
+        const appointments = await appointmentModel.find({visitorId: visitor._id})
         .populate("visitorId", "name email phone")
         .sort({dateTime: -1})
 
@@ -126,7 +126,7 @@ exports.rescheduleAppointments = async(req, res) => {
 
         if(!req.user){
             const normalizedEmail = email?.trim().toLowerCase()
-            if(!normalizedEmail || appointmentModel.visitorId?.email?.toLowerCase() !== normalizedEmail){
+            if(!normalizedEmail || appointment.visitorId?.email?.toLowerCase() !== normalizedEmail){
                 return res.status(404).json({error: "Email not found"})
             }
         }
@@ -148,7 +148,9 @@ exports.rescheduleAppointments = async(req, res) => {
         appointment.dateTime = parsedDate
         appointment.rescheduleAt = new Date()
         appointment.rescheduleCount = (appointment.rescheduleCount || 0) + 1
-        
+
+
+        await appointment.save()
         res.status(200).json(appointment)
     }
     catch(error){

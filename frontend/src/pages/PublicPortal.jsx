@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import VisitorForm from "../components/VisitorForm";
 import AppointmentForm from "../components/AppointmentForm";
+import DateTimePicker, { buildISOFromParts } from "../components/DateTimePicker"
+import {BASE_URL} from "../config" 
 
 const PublicPortal = () => {
   const [activeVisitor, setActiveVisitor] = useState(null);
@@ -22,6 +24,84 @@ const PublicPortal = () => {
     date: "",
     hostName: "",
   });
+
+
+  // rescheduling form
+
+  const[rescheduleDate, setRescheduleDate] = useState("")
+  const[rescheduleHour, setRescheduleHour] = useState("09")
+  const[rescheduleMinute, setRescheduleMinute] = useState("00")
+  const[reschedulePeriod, setReschedulePeriod] = useState("AM")
+  const[error, setError] = useState("")
+  const[success, setSuccess] = useState("")
+  const[rescheduleEmail, setRescheduleEmail] = useState("") 
+  const[showReschedule, setShowReschedule] = useState("") 
+  const[isSaving, setIsSaving] = useState(false)
+
+  const handleReschedule = async(e) => {
+    e.preventDefault()
+    setError("")
+    setSuccess("")
+    const cleanEmail = rescheduleEmail.trim().toLowerCase()
+    if(!cleanEmail|| ! rescheduleDate){
+      setError("Please enter email and new time")
+      return
+    }
+
+    const newDateTimeISO = buildISOFromParts(
+    rescheduleDate,
+    rescheduleHour,
+    rescheduleMinute,
+    reschedulePeriod
+    );
+
+    setIsSaving(true)
+    try{
+      const lookResponse = await fetch(`${BASE_URL}/api/appointments/visitor?email=${encodeURIComponent(cleanEmail)}`)
+      
+      const appointments = await lookResponse.json()
+      
+      if(!lookResponse.ok){
+        throw new Error("No visitor found")
+      }
+
+      const pendingAppointment = appointments.find((a)=>a.status === "Pending")
+      
+      if(!pendingAppointment){
+        throw new Error("No pending appointments")
+      }
+      
+      //rescheduling
+      const patchRes = await fetch(`${BASE_URL}/api/appointments/${pendingAppointment._id}/reschedule`,
+        {method: "PATCH", 
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            email: cleanEmail,
+            dateTime: newDateTimeISO
+          })
+        })
+      const updated = await patchRes.json()
+
+      if(!patchRes.ok){
+        throw new Error("Failed to reschedule")
+      }
+      setSuccess(
+        `Appointment rescheduled to ${new Date(updated.dateTime).toLocaleString([], {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })}!`
+      )
+      setRescheduleEmail("");
+      setRescheduleDate("");
+      setRescheduleHour("09");
+      setRescheduleMinute("00");
+      setReschedulePeriod("AM");
+    } catch (err) {
+      setError(err.message || "Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-slate-100 to-slate-50 py-10 px-4 sm:px-6 lg:px-8">
@@ -189,6 +269,66 @@ const PublicPortal = () => {
             Log in to Security Dashboard
           </Link>
         </div>
+         
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-8 max-w-xl mt-6 mx-auto">
+          <form onSubmit={handleReschedule}>
+            <div className="pb-3 border-b border-gray-100">
+              <h3 className="text-xl font-bold tracking-tight text-gray-900">
+                Reschedule an appointment?
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Enter details to reschedule
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mt-2 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={rescheduleEmail}
+                onChange={(e) => setRescheduleEmail(e.target.value)}
+                placeholder="Enter email"
+                required
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all mb-4"
+              />
+            </div>
+
+            <DateTimePicker
+              date={rescheduleDate}
+              setDate={setRescheduleDate}
+              hour={rescheduleHour}
+              setHour={setRescheduleHour}
+              minute={rescheduleMinute}
+              setMinute={setRescheduleMinute}
+              period={reschedulePeriod}
+              setPeriod={setReschedulePeriod}
+            />
+
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-lg m-4">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium rounded-lg m-4">
+                {success}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium text-sm py-2.5 px-4 rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              {isSaving ? "Rescheduling..." : "Reschedule Appointment"}
+            </button>
+          </form>
+        </div>
+
       </div>
     </div>
   );
