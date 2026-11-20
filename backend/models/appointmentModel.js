@@ -28,6 +28,14 @@ const appointmentSchema = new Schema({
         type: Date,
         required: true,
         default: Date.now
+    },
+    rescheduleAt:{
+        type: Date,
+        default: null
+    },
+    rescheduleCount:{
+        type: Number,
+        default: 0
     }
 },{timestamps: true}) 
 
