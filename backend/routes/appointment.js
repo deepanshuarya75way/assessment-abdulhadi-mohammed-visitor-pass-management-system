@@ -1,11 +1,30 @@
 const express = require('express')
-const requireAuth = require('../middleware/requireAuth')
 const requireRole = require('../middleware/requireRole')
-const {requestAppointment, updateAppointmentStatus, getPendingAppointment} = require('../controller/appointmentController')
-
+const {requestAppointment, updateAppointmentStatus, getPendingAppointment, getVisitorAppointments, rescheduleAppointments} = require('../controller/appointmentController')
 
 const appointmentRouter = express.Router()
 
+/**
+ * Route:       /api/visitor/
+ * Method:      GET
+ * Description: getting the visitor's appointment
+ * Access:      Public
+ * Parameters:  None
+ */
+appointmentRouter.get("/visitor", getVisitorAppointments)
+
+/**
+ * Route:       /api/:id/reschedule
+ * Method:      PATCH
+ * Description: reschedule an appointment
+ * Access:      Public
+ * Parameters:  id
+ */
+appointmentRouter.patch("/:id/reschedule", rescheduleAppointments)
+
+
+
+const requireAuth = require('../middleware/requireAuth')
 /**
  * Route:       /api/appointments/
  * Method:      POST
